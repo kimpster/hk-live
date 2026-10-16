@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#111827">
+<meta name="description" content="Live Hong Kong transport arrivals (MTR, Light Rail, buses, minibuses) and rainfall nowcast on one map.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>HK Live · Transport &amp; Rain</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23111827'/%3E%3Ccircle cx='16' cy='13' r='6' fill='none' stroke='%23fff' stroke-width='2.4'/%3E%3Cpath d='M10 20h12M16 19v4' stroke='%2334d399' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="map" role="application" aria-label="Hong Kong transport map"></div>
+
+<!-- top bar -->
+<header id="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" class="brand-logo" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#e11d48"/><circle cx="16" cy="13" r="6" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M10 20h12M16 19v4" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>
+    <div class="brand-text">
+      <h1 data-i18n="title">HK Live</h1>
+      <span data-i18n="subtitle">Transport &amp; rain</span>
+    </div>
+  </div>
+  <button id="langBtn" class="chip chip-static" type="button" aria-label="Switch language">繁中</button>
+</header>
+
+<!-- mode filter chips -->
+<nav id="filters" aria-label="Filter by transport mode">
+  <button class="chip chip-filter is-on" data-mode="mtr" type="button"><span class="dot dot-mtr"></span><span data-i18n="fMtr">MTR</span></button>
+  <button class="chip chip-filter is-on" data-mode="lr" type="button"><span class="dot dot-lr"></span><span data-i18n="fLr">Light Rail</span></button>
+  <button class="chip chip-filter is-on" data-mode="bus" type="button"><span class="dot dot-kmb"></span><span data-i18n="fBus">Bus</span></button>
+  <button class="chip chip-filter is-on" data-mode="gmb" type="button"><span class="dot dot-gmb"></span><span data-i18n="fGmb">Minibus</span></button>
+</nav>
+
+<!-- zoom hint for hidden bus stops -->
+<div id="zoomHint" class="hint hidden" data-i18n="zoomHint">Zoom in to see bus &amp; minibus stops</div>
+
+<!-- floating controls (right column) -->
+<div id="controls">
+  <button id="rainBtn" class="ctl" type="button" aria-label="Toggle rainfall overlay" title="Rainfall">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 15a5 5 0 1 1 .8-9.9A6.5 6.5 0 0 1 20 8.5 4.5 4.5 0 0 1 19 17H7z" fill="currentColor" opacity=".9"/><path d="M8 19l-1 2.2M12.5 19l-1 2.2M17 19l-1 2.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+  <button id="nearbyBtn" class="ctl" type="button" aria-label="Nearby stops" title="Nearby stops">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-5.1-7-11a7 7 0 0 1 14 0c0 5.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg>
+  </button>
+  <button id="locBtn" class="ctl" type="button" aria-label="Locate me" title="Locate me">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 5.2-7 13-7 13S5 14.2 5 9a7 7 0 0 1 7-7z" /><circle cx="12" cy="9" r="2.8" fill="#fff"/></svg>
+  </button>
+</div>
+
+<!-- rain panel -->
+<aside id="rainPanel" class="panel hidden" aria-label="Rainfall information">
+  <div class="panel-head">
+    <h2 data-i18n="rainTitle">Rainfall</h2>
+    <button class="icon-btn" id="rainPanelClose" type="button" aria-label="Close">✕</button>
+  </div>
+  <div class="panel-body">
+    <section class="rain-now">
+      <div class="rain-now-label" id="rainHereLabel" data-i18n="rainHere">Here (next 30 min)</div>
+      <div class="rain-now-val" id="rainHereVal">–</div>
+    </section>
+    <section class="rain-meta">
+      <div id="rainUpdated">–</div>
+      <label class="opacity-row">
+        <span data-i18n="opacity">Opacity</span>
+        <input type="range" id="rainOpacity" min="20" max="100" value="70">
+      </label>
+    </section>
+    <div class="legend" id="rainLegend">
+      <span class="legend-cell" style="--c:rgba(56,189,248,.75)">0.5</span>
+      <span class="legend-cell" style="--c:rgba(59,130,246,.8)">2</span>
+      <span class="legend-cell" style="--c:rgba(250,204,21,.85)">10</span>
+      <span class="legend-cell" style="--c:rgba(249,115,22,.9)">30</span>
+      <span class="legend-cell" style="--c:rgba(239,68,68,.92)">70+</span>
+      <span class="legend-unit">mm / 30 min</span>
+    </div>
+    <h3 data-i18n="psrTitle">Probability of rain (daily)</h3>
+    <p class="muted small" data-i18n="psrNote">HKO open data provides daily probability of significant rain for the next 9 days (hourly values are not published).</p>
+    <ul id="psrList" class="psr-list"></ul>
+    <p class="muted small" id="rainSource"></p>
+  </div>
+</aside>
+
+<!-- nearby stops panel -->
+<aside id="nearbyPanel" class="panel hidden" aria-label="Nearby stops">
+  <div class="panel-head">
+    <h2 data-i18n="nearbyTitle">Nearby stops</h2>
+    <button class="icon-btn" id="nearbyClose" type="button" aria-label="Close">✕</button>
+  </div>
+  <div class="panel-body">
+    <ul id="nearbyList" class="nearby-list"></ul>
+  </div>
+</aside>
+
+<!-- ETA bottom sheet / side panel -->
+<section id="sheet" class="sheet is-closed" aria-label="Arrival times">
+  <div class="sheet-handle" id="sheetHandle" role="button" aria-label="Collapse"><span></span></div>
+  <header class="sheet-head">
+    <div class="sheet-title-wrap">
+      <div class="sheet-ops" id="sheetOps"></div>
+      <h2 id="sheetTitle">–</h2>
+    </div>
+    <div class="sheet-actions">
+      <button class="icon-btn" id="sheetRefresh" type="button" aria-label="Refresh" title="Refresh">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M20 3v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="icon-btn" id="sheetClose" type="button" aria-label="Close">✕</button>
+    </div>
+  </header>
+  <div class="sheet-updated"><span id="sheetUpdated"></span></div>
+  <div class="sheet-body" id="sheetBody"></div>
+</section>
+
+<div id="statusMsg" class="status hidden" role="status"></div>
+
+<footer id="attrib" class="attrib">
+  <span data-i18n="attrib">Data: MTR · KMB · CTB · TD GMB · HKO — Map © OpenStreetMap contributors</span>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin=""></script>
+<script type="module" src="assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# intermediate crawl output (regenerate with tools/fetch_*.py)
+assets/data/raw/
+.DS_Store
+node_modules/

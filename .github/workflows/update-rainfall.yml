@@ -1,0 +1,41 @@
+name: Update rainfall nowcast
+
+# HKO publishes the gridded rainfall nowcast every ~6 minutes, but the CSV has
+# no CORS headers so the browser cannot fetch it directly. This workflow
+# crops it to Hong Kong and commits the compact JSON the map overlays.
+on:
+  schedule:
+    - cron: "*/10 * * * *" # UTC; every 10 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rainfall-update
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch nowcast
+        run: python3 tools/update_nowcast.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/data/rainfall.json
+          if git diff --cached --quiet; then
+            echo "No change"
+          else
+            git commit -m "chore: refresh rainfall nowcast"
+            git push
+          fi
