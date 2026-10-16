@@ -87,12 +87,10 @@ function makeMarker(key, obj) {
     labelCls = "mk-label-rail";
   } else {
     const { hasBus, hasGmb } = busModes(obj);
-    const mix = (obj.k.length + obj.c.length + obj.g.length) > 1;
-    if (mix && hasBus && hasGmb) { cls = "mk-mix"; glyph = GLYPH.mixed; }
-    else if (mix) { cls = "mk-mix"; glyph = GLYPH.bus; }
+    // simple colour language: black = bus, green = minibus, split = both
+    if (hasBus && hasGmb) { cls = "mk-bus-gmb"; glyph = GLYPH.bus; }
     else if (hasGmb) { cls = "mk-gmb"; glyph = GLYPH.mini; }
-    else if (obj.c.length && !obj.k.length) { cls = "mk-ctb"; glyph = GLYPH.bus; }
-    else { cls = "mk-kmb"; glyph = GLYPH.bus; }
+    else { cls = "mk-bus"; glyph = GLYPH.bus; }
     size = 26;
     name = cleanName(obj.en, obj.tc);
     labelCls = "mk-label-bus";
@@ -349,11 +347,9 @@ function renderNearby() {
     if (kind === "m") dots.innerHTML = `<span class="dot dot-mtr"></span>`;
     else if (kind === "l") dots.innerHTML = `<span class="dot dot-lr"></span>`;
     else {
-      const { hasBus } = busModes(stop);
-      dots.innerHTML = (stop.k.length ? `<span class="dot dot-kmb"></span>` : "") +
-        (stop.c.length ? `<span class="dot dot-ctb"></span>` : "") +
-        (stop.g.length && !hasBus ? `<span class="dot dot-gmb"></span>` : "") +
-        (stop.g.length && hasBus ? `<span class="dot dot-gmb"></span>` : "");
+      const { hasBus, hasGmb } = busModes(stop);
+      dots.innerHTML = (hasBus ? `<span class="dot dot-bus"></span>` : "") +
+        (hasGmb ? `<span class="dot dot-gmb"></span>` : "");
     }
     dots.style.display = "inline-flex"; dots.style.gap = "3px";
     li.appendChild(dots);

@@ -73,8 +73,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .chip-filter.is-on .dot { outline-color: rgba(255,255,255,.75); }
 .dot { width: 9px; height: 9px; border-radius: 50%; outline: 2px solid rgba(15,23,42,.12); }
 .dot-mtr { background: var(--c-mtr); } .dot-lr { background: var(--c-lr); }
-.dot-kmb { background: var(--c-kmb); } .dot-gmb { background: var(--c-gmb); }
-.dot-ctb { background: var(--c-ctb); }
+.dot-bus { background: #111827; } .dot-gmb { background: var(--c-gmb); }
 
 #filters {
   position: fixed; z-index: 1000;
@@ -307,10 +306,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   background: linear-gradient(160deg, #c22733, #8f1622);
 }
 .mk-lr { background: linear-gradient(160deg, #f59e0b, #d97706); }
-.mk-kmb { background: linear-gradient(160deg, #e05753, #c23631); }
-.mk-ctb { background: linear-gradient(160deg, #f7c331, #e0a800); color: #3b2f00; }
+.mk-bus { background: linear-gradient(160deg, #374151, #111827); }
 .mk-gmb { background: linear-gradient(160deg, #16a34a, #0c7a36); }
-.mk-mix { background: linear-gradient(160deg, #475569, #1e293b); }
+.mk-bus-gmb { background: linear-gradient(135deg, #111827 50%, #16a34a 50%); }
 .mk.selected { transform: scale(1.28); z-index: 999; outline: 3px solid rgba(29, 78, 216, .55); outline-offset: 2px; }
 .leaflet-marker-icon.mk-wrap { background: transparent; border: 0; }
 .mk-label {
