@@ -176,7 +176,7 @@ export function streamETAs(stop, D, onUpdate) {
         // stagger to stay friendly with rt.data.gov.hk rate limiting
         for (const r of routes) {
           parts.push(...normCTB(await fetchJSON(CTB(id, r))));
-          await sleep(90);
+          await sleep(120);
         }
         return parts;
       }));
@@ -219,67 +219,46 @@ export function renderETAs(body, { groups, errors, busy }, { updatedAt, delay } 
     return;
   }
   const frag = document.createDocumentFragment();
-  for (const g of groups) {
-    const sec = document.createElement("div");
-    sec.className = "eta-group";
-    const row = document.createElement("div");
-    row.className = "eta-route-row";
-    const no = document.createElement("span");
-    no.className = `route-no rn-${g.op}`;
-    no.textContent = g.route;
-    row.appendChild(no);
-    if (g.dest) {
-      const d = document.createElement("span");
-      d.className = "eta-dest";
-      d.textContent = `${t("to")} ${g.dest}`;
-      row.appendChild(d);
-    }
-    if (g.plat) {
-      const p = document.createElement("span");
-      p.className = "eta-plat";
-      p.textContent = g.plat;
-      row.appendChild(p);
-    }
-    sec.appendChild(row);
 
-    const chips = document.createElement("div");
-    chips.className = "eta-chips";
-    const shown = g.entries.slice(0, 3);
-    if (!shown.length) {
-      const c = document.createElement("span");
-      c.className = "eta-chip none";
-      c.textContent = g.note || t("noEta");
-      chips.appendChild(c);
-    }
-    for (const e of shown) {
-      const c = document.createElement("span");
-      c.className = "eta-chip" + (e.min != null && e.min <= 3 ? " soon" : "");
-      if (e.text) {
-        c.textContent = e.text;
-      } else if (e.min != null) {
-        const label = e.min <= 0 ? t("arriving") : `${e.min} ${t("min")}`;
-        c.textContent = label;
-        const sub = document.createElement("span");
-        sub.className = "t";
-        sub.textContent = e.hkt || (e.at ? fmtClock(e.at) : "");
-        if (sub.textContent) c.appendChild(sub);
-      } else {
-        c.classList.add("none");
-        c.textContent = e.note || "–";
-      }
-      chips.appendChild(c);
-    }
-    sec.appendChild(chips);
-
-    const notes = [...new Set(g.entries.filter((e) => e.note).map((e) => e.note).concat(g.note ? [g.note] : []))];
-    if (notes.length) {
-      const n = document.createElement("div");
-      n.className = "eta-note";
-      n.textContent = notes.join(" · ");
-      sec.appendChild(n);
-    }
-    frag.appendChild(sec);
+  // Rail keeps the detailed layout (line + terminus + platform matter there).
+  for (const g of groups.filter((g) => g.op === "mtr" || g.op === "lr")) {
+    frag.appendChild(railGroupEl(g));
   }
+
+  // Bus/minibus: compact — one chip per route showing only the next arrival,
+  // sorted by arrival time (ties by route number, then destination).
+  const busGroups = groups.filter((g) => g.op !== "mtr" && g.op !== "lr");
+  if (busGroups.length) {
+    const byTime = (a, b) =>
+      (a.min ?? 9999) - (b.min ?? 9999) ||
+      routeNum(a.route) - routeNum(b.route) ||
+      a.route.localeCompare(b.route) ||
+      String(a.dest || "").localeCompare(String(b.dest || ""));
+    const live = [], idle = [];
+    for (const g of busGroups) {
+      const next = g.entries.find((e) => e.min != null);
+      const item = { op: g.op, route: g.route, min: next ? next.min : null, at: next ? next.at : null };
+      (next ? live : idle).push(item);
+    }
+    live.sort(byTime);
+    idle.sort(byTime);
+
+    const grid = document.createElement("div");
+    grid.className = "eta-busgrid";
+    for (const item of live) grid.appendChild(busChipEl(item));
+    frag.appendChild(grid);
+
+    if (idle.length) {
+      const line = document.createElement("div");
+      line.className = "eta-idle";
+      const label = document.createElement("span");
+      label.textContent = `${t("idleRoutes")} `;
+      line.appendChild(label);
+      line.appendChild(document.createTextNode(idle.map((i) => i.route).join(" · ")));
+      frag.appendChild(line);
+    }
+  }
+
   for (const err of errors) {
     const el = document.createElement("div");
     el.className = "eta-error";
@@ -288,6 +267,82 @@ export function renderETAs(body, { groups, errors, busy }, { updatedAt, delay } 
   }
   body.appendChild(frag);
   if (busy && !groups.length) body.appendChild(emptyState(true));
+}
+
+function railGroupEl(g) {
+  const sec = document.createElement("div");
+  sec.className = "eta-group";
+  const row = document.createElement("div");
+  row.className = "eta-route-row";
+  const no = document.createElement("span");
+  no.className = `route-no rn-${g.op}`;
+  no.textContent = g.route;
+  row.appendChild(no);
+  if (g.dest) {
+    const d = document.createElement("span");
+    d.className = "eta-dest";
+    d.textContent = `${t("to")} ${g.dest}`;
+    row.appendChild(d);
+  }
+  if (g.plat) {
+    const p = document.createElement("span");
+    p.className = "eta-plat";
+    p.textContent = g.plat;
+    row.appendChild(p);
+  }
+  sec.appendChild(row);
+
+  const chips = document.createElement("div");
+  chips.className = "eta-chips";
+  const shown = g.entries.slice(0, 3);
+  if (!shown.length) {
+    const c = document.createElement("span");
+    c.className = "eta-chip none";
+    c.textContent = g.note || t("noEta");
+    chips.appendChild(c);
+  }
+  for (const e of shown) {
+    const c = document.createElement("span");
+    c.className = "eta-chip" + (e.min != null && e.min <= 3 ? " soon" : "");
+    if (e.text) {
+      c.textContent = e.text;
+    } else if (e.min != null) {
+      const label = e.min <= 0 ? t("arriving") : `${e.min} ${t("min")}`;
+      c.textContent = label;
+      const sub = document.createElement("span");
+      sub.className = "t";
+      sub.textContent = e.hkt || (e.at ? fmtClock(e.at) : "");
+      if (sub.textContent) c.appendChild(sub);
+    } else {
+      c.classList.add("none");
+      c.textContent = e.note || "–";
+    }
+    chips.appendChild(c);
+  }
+  sec.appendChild(chips);
+
+  const notes = [...new Set(g.entries.filter((e) => e.note).map((e) => e.note).concat(g.note ? [g.note] : []))];
+  if (notes.length) {
+    const n = document.createElement("div");
+    n.className = "eta-note";
+    n.textContent = notes.join(" · ");
+    sec.appendChild(n);
+  }
+  return sec;
+}
+
+function busChipEl(item) {
+  const chip = document.createElement("span");
+  chip.className = "eta-mini" + (item.min <= 3 ? " soon" : "");
+  const r = document.createElement("span");
+  r.className = `r rn-${item.op}`;
+  r.textContent = item.route;
+  chip.appendChild(r);
+  const m = document.createElement("span");
+  m.className = "m";
+  m.textContent = item.min <= 0 ? t("arriving") : `${item.min} ${t("min")}`;
+  chip.appendChild(m);
+  return chip;
 }
 
 function emptyState(busy) {

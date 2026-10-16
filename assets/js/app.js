@@ -234,10 +234,13 @@ function startETAs() {
     renderETAs(body, res, { delay: res.delay });
     $("sheetUpdated").textContent = `${t("updated")} ${fmtHHMMSS(new Date())}`;
   });
+  // CTB is multi-call per refresh (one request per route) — space it out to
+  // 2.5 min; single-call operators (KMB/GMB/MTR/LR) can stay at 30 s.
+  const refreshMs = currentStop.c && currentStop.c.length ? 150000 : 30000;
   etaTimer = setInterval(() => {
     if (document.hidden || !currentStop) return;
     startETAs();
-  }, 30000);
+  }, refreshMs);
 }
 function stopETAs() {
   if (etaHandle) etaHandle.cancel();
