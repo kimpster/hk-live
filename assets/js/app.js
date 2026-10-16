@@ -44,11 +44,10 @@ const map = L.map("map", {
   });
 }
 
-L.control.zoom({ position: "bottomright" }).addTo(map);
-// CyclOSM: OSM-Bright-derived cartography — light, low POI clutter, full detail zoomed in
-L.tileLayer("https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png", {
-  subdomains: "abc", maxZoom: 19,
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · <a href="https://github.com/cyclosm/cyclosm-cartocss-style">CyclOSM</a> · <a href="https://www.openstreetmap.fr/">OSM-FR</a>',
+L.control.zoom({ position: "bottomleft" }).addTo(map);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 }).addTo(map);
 
 /* ---------------- data load ---------------- */

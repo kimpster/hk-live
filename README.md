@@ -66,8 +66,9 @@ to the government APIs.
 ## Notes
 
 - All runtime API calls go to CORS-enabled government endpoints; nothing is proxied.
-- Basemap: CyclOSM (an OSM-Bright-derived style — light, low POI clutter, full
-  detail when zoomed in), hosted key-free by OpenStreetMap France.
+- Basemap: standard raster OpenStreetMap tiles. (An OpenFreeMap/MapLibre vector
+  variant was tried and reverted for performance; `assets/js/gl-layer.js` in git
+  history has the working bridge if you want it back.)
 - Coordinates for MTR/LR stations come from OpenStreetMap (via Overpass), matched
   against MTR's official station-code CSVs.
 - Data sources: MTR Corporation, KMB, CTB, Transport Department (GMB), Hong Kong
