@@ -11,9 +11,12 @@ the map costs the public APIs nothing.
 ## Features
 
 - **Map of every stop**: MTR (97 stations), Light Rail (68 stops), KMB + CTB bus stops
-  and GMB green-minibus stops (~13,700 raw stops, merged into ~11,100 markers).
-  Co-located stops from *different* operators within **12 m** are merged into one marker
-  (same pole / shelter); same-operator and rail stops are never merged.
+  and GMB green-minibus stops (~13,700 raw stops, merged into ~6,100 markers).
+  Stops that are physically the same stopping point are merged into one marker:
+  any stops within **20 m** of each other (same pole/shelter on the same side of the
+  road), or stops with identical names within **50 m** (operators record one physical
+  stop once per route group). Termini/interchanges collapse into a single marker that
+  still shows every bay's arrivals. Rail is never merged with bus stops.
 - **Tap a stop → live arrivals** from:
   - MTR heavy rail — [Next Train data](https://data.gov.hk/en-data/dataset/mtr-data2-nexttrain-data)
   - Light Rail — [LR Next Train](https://data.gov.hk/en-data/dataset/mtr-lrnt_data-light-rail-nexttrain-data)
@@ -22,7 +25,9 @@ the map costs the public APIs nothing.
   - GMB — [real-time arrival](https://data.gov.hk/en-data/dataset/hk-td-sm_7-real-time-arrival-data-of-gmb)
   ETAs auto-refresh every 30 s while the panel is open.
 - **Geolocation**: asks on load; if denied/unavailable the map falls back to Central.
-  The view is deep-linkable via the URL hash (`#lat,lng,zoom`).
+  Note browsers only allow geolocation on secure origins — it works on the published
+  HTTPS site, but a LAN `http://` preview on a phone will report it unavailable by
+  design. The view is deep-linkable via the URL hash (`#lat,lng,zoom`).
 - **Rainfall nowcast overlay** from
   [HKO gridded rainfall nowcast](https://data.gov.hk/en-data/dataset/hk-hko-rss-gridded-rainfall-nowcast-in-hong-kong)
   (next-30-minute accumulated rainfall, ~2 km grid), plus the 9-day **probability of
@@ -61,7 +66,8 @@ to the government APIs.
 ## Notes
 
 - All runtime API calls go to CORS-enabled government endpoints; nothing is proxied.
+- Basemap: Esri World Light Gray Canvas (minimal, label-light) for clean stop markers.
 - Coordinates for MTR/LR stations come from OpenStreetMap (via Overpass), matched
   against MTR's official station-code CSVs.
 - Data sources: MTR Corporation, KMB, CTB, Transport Department (GMB), Hong Kong
-  Observatory, OpenStreetMap contributors.
+  Observatory, OpenStreetMap contributors, Esri.

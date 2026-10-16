@@ -45,9 +45,12 @@ const map = L.map("map", {
 }
 
 L.control.zoom({ position: "bottomright" }).addTo(map);
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+// minimal basemap: light-gray canvas with a labels-only reference overlay on top
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+  maxZoom: 19, attribution: "Esri, HERE, Garmin, OSM contributors",
+}).addTo(map);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
+  maxZoom: 19, attribution: "", pane: "overlayPane", zIndex: 199,
 }).addTo(map);
 
 /* ---------------- data load ---------------- */
@@ -78,11 +81,13 @@ function busModes(s) {
 }
 
 function makeMarker(key, obj) {
-  let cls, glyph, size, name;
+  let cls, glyph, size, name, labelCls;
   if (key[0] === "m") {
     cls = "mk-mtr"; glyph = GLYPH.railM; size = 30; name = LK(obj.en, obj.tc);
+    labelCls = "mk-label-rail";
   } else if (key[0] === "l") {
     cls = "mk-lr"; glyph = GLYPH.train; size = 26; name = LK(obj.en, obj.tc);
+    labelCls = "mk-label-rail";
   } else {
     const { hasBus, hasGmb } = busModes(obj);
     const mix = (obj.k.length + obj.c.length + obj.g.length) > 1;
@@ -93,10 +98,11 @@ function makeMarker(key, obj) {
     else { cls = "mk-kmb"; glyph = GLYPH.bus; }
     size = 26;
     name = cleanName(obj.en, obj.tc);
+    labelCls = "mk-label-bus";
   }
   const icon = L.divIcon({
     className: "mk-wrap",
-    html: `<div class="mk ${cls}">${glyph}</div><div class="mk-label">${name}</div>`,
+    html: `<div class="mk ${cls}">${glyph}</div><div class="mk-label ${labelCls}">${name}</div>`,
     iconSize: [size, size], iconAnchor: [size / 2, size / 2],
   });
   const m = L.marker([obj.la, obj.ln], { icon, riseOnHover: true, keyboard: false });
@@ -137,7 +143,8 @@ function refreshMarkers() {
     for (const s of cand.slice(0, MAX_BUS_MARKERS)) wanted.add(`b${s.i}`);
   }
 
-  document.body.classList.toggle("z-labels", z >= 16);
+  document.body.classList.toggle("z-labels", z >= 16);       // rail labels
+  document.body.classList.toggle("z-labels-bus", z >= 18);   // bus/minibus labels
   const showHint = (filters.has("bus") || filters.has("gmb")) && z < BUS_MIN_ZOOM;
   $("zoomHint").classList.toggle("hidden", !showHint);
 
@@ -266,6 +273,12 @@ map.on("click", () => { if (currentStop) closeSheet(); });
 let userDot = null;
 function locate(interactive) {
   if (!navigator.geolocation) { if (interactive) toast(t("locDenied")); return; }
+  // Browsers block geolocation on insecure origins: the published GitHub Pages
+  // site (HTTPS) is fine, but http://LAN-IP previews are not.
+  if (!window.isSecureContext) {
+    if (interactive) toast(t("locHttps"), 5000);
+    return;
+  }
   $("locBtn").classList.add("locating");
   navigator.geolocation.getCurrentPosition((pos) => {
     $("locBtn").classList.remove("locating");
@@ -284,9 +297,12 @@ function locate(interactive) {
     map.setView([userPos.lat, userPos.lng], Math.max(map.getZoom(), 16), { animate: true });
     updateRainHere();
     if (nearbyOpen) renderNearby();
-  }, () => {
+  }, (err) => {
     $("locBtn").classList.remove("locating");
-    if (interactive) toast(t("locDenied"));
+    if (!interactive) return;
+    if (err && err.code === 1) toast(t("locDeniedSet"), 5000);       // permission denied
+    else if (err && err.code === 3) toast(t("locTimeout"));          // timed out
+    else toast(t("locDenied"));
   }, { enableHighAccuracy: true, timeout: 9000, maximumAge: 20000 });
 }
 locate(false);
@@ -376,7 +392,7 @@ async function toggleRain() {
   $("rainPanel").classList.toggle("hidden", !rainOn);
   if (rainOn) {
     try {
-      await rain.load();
+      await rain.enable();
       updateRainMeta();
       updateRainHere();
     } catch {

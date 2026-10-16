@@ -83,7 +83,7 @@ export class RainLayer {
     const east = d.lon0 + (d.nx - 0.5) * d.dlon;
     this.overlay = L.imageOverlay(cv.toDataURL("image/png"),
       [[south, west], [north, east]],
-      { opacity: this.opacity, interactive: false, className: "rain-overlay" });
+      { opacity: this.opacity, interactive: false, className: "rain-overlay", zIndex: 250 });
     this.overlay.addTo(this.map);
   }
 

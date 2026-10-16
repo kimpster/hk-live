@@ -121,7 +121,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   display: flex; flex-direction: column;
   overflow: hidden;
 }
-#rainPanel, #nearbyPanel { top: calc(158px + var(--safe-t)); }
+#rainPanel, #nearbyPanel { top: calc(158px + var(--safe-t)); max-height: min(54vh, 460px); }
 #rainPanel { right: calc(12px + var(--safe-r)); }
 #nearbyPanel { right: calc(12px + var(--safe-r)); }
 .panel-head {
@@ -300,7 +300,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   display: none;
   z-index: 500;
 }
-body.z-labels .mk-label { display: block; }
+body.z-labels .mk-label-rail { display: block; }
+body.z-labels-bus .mk-label-bus { display: block; }
 
 /* user location dot */
 .user-dot {

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Aggregate raw operator data into the single static file the site loads.
 
-Merges co-located stops ACROSS operators only (KMB/CTB/GMB) when they are
-within MERGE_M (~12 m) of each other — i.e. genuinely the same pole/shelter.
-Same-operator stops are never merged. Rail (MTR/LR) is never merged with bus
-stops since station entrances are far apart.
+Merges bus/minibus stops that are physically the same stopping point:
+  - any two stops <= MERGE_M apart (same pole/shelter, same side of the road,
+    any combination of KMB/CTB/GMB), or
+  - identical normalized names <= NAME_MERGE_M apart (operators record the
+    same physical stop once per route group; matching names on the same
+    stretch of one side of the road are the same stop group).
+Rail (MTR/LR) is never merged with bus stops.
 
 Output: assets/data/stops.json
   s  : bus/minibus clusters [latE6, lngE6, en, tc, [kmb ids], [ctb ids], [gmb ids]]
@@ -16,10 +19,12 @@ Output: assets/data/stops.json
 import json
 import math
 import os
+import re
 
 RAW = os.path.join(os.path.dirname(__file__), "..", "assets", "data", "raw")
 OUT = os.path.join(os.path.dirname(__file__), "..", "assets", "data", "stops.json")
-MERGE_M = 12.0
+MERGE_M = 20.0
+NAME_MERGE_M = 50.0
 
 
 def load(name):
@@ -54,6 +59,12 @@ def dist_m(a, b):
     return 2 * r * math.asin(math.sqrt(x))
 
 
+def norm_name(en):
+    """Normalized stop name: drop trailing stop codes, punctuation and case."""
+    s = re.sub(r"\s*\([A-Z0-9]{2,6}\)\s*$", "", en or "")
+    return re.sub(r"[^A-Z0-9]", "", s.upper())
+
+
 def main():
     kmb = load("kmb_stops.json")["data"]
     ctb = load("ctb_stops.json")
@@ -73,15 +84,21 @@ def main():
                       "en": s["en"], "tc": s["tc"]})
     print(f"bus stops in: kmb {len(kmb)} ctb {len(ctb)} gmb {sum(1 for s in gmb.values() if s.get('on', True))}")
 
-    # grid buckets ~110 m, union cross-operator stops within MERGE_M
+    # Two merge passes (union-find):
+    #  1. physical proximity: any two stops <= MERGE_M apart merge (same pole /
+    #     shelter cluster, same side of the road, any operator combination);
+    #  2. same-name: identical normalized names <= NAME_MERGE_M apart merge
+    #     (operators often record the same physical stop as one entry per
+    #     route group -- same name on the same side of the road).
     cell = 0.001
     grid = {}
     for i, s in enumerate(stops):
+        s["nn"] = norm_name(s["en"])
         key = (round(s["lat"] / cell), round(s["lng"] / cell))
         grid.setdefault(key, []).append(i)
 
     dsu = DSU(len(stops))
-    merged = 0
+    merged_prox = merged_name = 0
     for (gy, gx), idxs in grid.items():
         for dy in (-1, 0, 1):
             for dx in (-1, 0, 1):
@@ -90,12 +107,17 @@ def main():
                     continue
                 for i in idxs:
                     for j in other:
-                        if j <= i or stops[i]["op"] == stops[j]["op"]:
+                        if j <= i:
                             continue
-                        if dist_m((stops[i]["lat"], stops[i]["lng"]),
-                                  (stops[j]["lat"], stops[j]["lng"])) <= MERGE_M:
+                        d = dist_m((stops[i]["lat"], stops[i]["lng"]),
+                                   (stops[j]["lat"], stops[j]["lng"]))
+                        if d <= MERGE_M:
                             dsu.union(i, j)
-                            merged += 1
+                            merged_prox += 1
+                        elif (d <= NAME_MERGE_M and stops[i]["nn"] and
+                              stops[i]["nn"] == stops[j]["nn"]):
+                            dsu.union(i, j)
+                            merged_name += 1
 
     clusters = {}
     for i, s in enumerate(stops):
@@ -119,7 +141,8 @@ def main():
         ])
     out_s.sort(key=lambda r: (r[0], r[1]))
     multi = sum(1 for r in out_s if sum(1 for x in (r[4], r[5], r[6]) if x) > 1)
-    print(f"clusters: {len(out_s)} ({multi} multi-operator, {merged} cross-links)")
+    print(f"clusters: {len(out_s)} ({multi} multi-operator, "
+          f"{merged_prox} proximity links, {merged_name} same-name links)")
 
     cr = load("ctb_stop_routes.json")
     gr_raw = load("gmb_routes.json")

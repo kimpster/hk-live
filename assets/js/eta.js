@@ -189,7 +189,11 @@ export function streamETAs(stop, D, onUpdate) {
 }
 
 function sortGroups(groups) {
+  const live = (g) => g.entries.some((e) => e.min != null);
   return groups.slice().sort((a, b) => {
+    // routes with live ETAs always come before out-of-service ones
+    const la = live(a) ? 0 : 1, lb = live(b) ? 0 : 1;
+    if (la !== lb) return la - lb;
     const d = OP_ORDER[a.op] - OP_ORDER[b.op];
     if (d) return d;
     const ra = routeNum(a.route), rb = routeNum(b.route);
