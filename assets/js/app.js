@@ -45,12 +45,10 @@ const map = L.map("map", {
 }
 
 L.control.zoom({ position: "bottomright" }).addTo(map);
-// minimal basemap: light-gray canvas with a labels-only reference overlay on top
-L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
-  maxZoom: 19, attribution: "Esri, HERE, Garmin, OSM contributors",
-}).addTo(map);
-L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
-  maxZoom: 19, attribution: "", pane: "overlayPane", zIndex: 199,
+// CyclOSM: OSM-Bright-derived cartography — light, low POI clutter, full detail zoomed in
+L.tileLayer("https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png", {
+  subdomains: "abc", maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · <a href="https://github.com/cyclosm/cyclosm-cartocss-style">CyclOSM</a> · <a href="https://www.openstreetmap.fr/">OSM-FR</a>',
 }).addTo(map);
 
 /* ---------------- data load ---------------- */

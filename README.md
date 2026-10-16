@@ -66,8 +66,9 @@ to the government APIs.
 ## Notes
 
 - All runtime API calls go to CORS-enabled government endpoints; nothing is proxied.
-- Basemap: Esri World Light Gray Canvas (minimal, label-light) for clean stop markers.
+- Basemap: CyclOSM (an OSM-Bright-derived style — light, low POI clutter, full
+  detail when zoomed in), hosted key-free by OpenStreetMap France.
 - Coordinates for MTR/LR stations come from OpenStreetMap (via Overpass), matched
   against MTR's official station-code CSVs.
 - Data sources: MTR Corporation, KMB, CTB, Transport Department (GMB), Hong Kong
-  Observatory, OpenStreetMap contributors, Esri.
+  Observatory, OpenStreetMap contributors.
